@@ -47,6 +47,14 @@ else
     ARCH_ARGS=("--arch" "$(uname -m)")
 fi
 
+# macOS 自带 Bash 3.2 在 `set -u` 下展开空数组会报 unbound variable。
+# 把必选参数与可选参数合并为始终非空的数组，保证本机和 GitHub Actions
+# 使用相同命令路径。
+SWIFT_BUILD_ARGS=("-c" "$CONFIG" "${ARCH_ARGS[@]}")
+if [ "${#BUILD_ARGS[@]}" -gt 0 ]; then
+    SWIFT_BUILD_ARGS+=("${BUILD_ARGS[@]}")
+fi
+
 # ─────────────────────────────────────────────────────────────
 # 关键：必须使用「完整 Xcode」的工具链构建，不能用 Command Line Tools。
 # SwiftUI 的 @State/@Observable 等宏的实现（SwiftUIMacros 插件）
@@ -100,8 +108,8 @@ echo "▶ 使用 Xcode toolchain: $DEVELOPER_DIR"
 ARCH_LABEL="当前架构"
 if [ "$UNIVERSAL" -eq 1 ]; then ARCH_LABEL="arm64 + x86_64"; fi
 echo "▶ 构建 $PRODUCT ($CONFIG, $ARCH_LABEL) [toolchain: $(xcrun xcodebuild -version 2>/dev/null | head -1 || echo '?')]…"
-xcrun swift build -c "$CONFIG" "${ARCH_ARGS[@]}" "${BUILD_ARGS[@]}"
-BUILD_DIR=$(xcrun swift build -c "$CONFIG" "${ARCH_ARGS[@]}" "${BUILD_ARGS[@]}" --show-bin-path)
+xcrun swift build "${SWIFT_BUILD_ARGS[@]}"
+BUILD_DIR=$(xcrun swift build "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)
 
 APP="build/$APP_NAME.app"
 rm -rf "$APP"
