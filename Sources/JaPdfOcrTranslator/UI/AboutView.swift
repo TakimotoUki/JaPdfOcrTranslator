@@ -3,20 +3,29 @@ import SwiftUI
 /// About and open-source acknowledgements.
 struct AboutView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("日文 PDF 转译").font(.title2.bold())
-            Text("日文 OCR · 大模型翻译 · PDF 生成")
-                .foregroundStyle(.secondary)
-            Divider()
-            ScrollView {
-                Text(acknowledgement)
-                    .font(.callout)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(minHeight: 200, maxHeight: .infinity)
-            HStack {
-                Spacer()
-                Button("关闭") { closeCurrentWindow() }
+        AdaptiveGlassContainer(spacing: 16) {
+            VStack(alignment: .leading, spacing: 16) {
+                SectionCard(title: "") {
+                    Label("日文 PDF 转译", systemImage: "doc.text.magnifyingglass")
+                        .font(.title2.bold())
+                    Text("日文 OCR · 大模型翻译 · PDF 生成")
+                        .foregroundStyle(.secondary)
+                }
+
+                SectionCard(title: "致谢与开源许可") {
+                    ScrollView {
+                        Text(acknowledgement)
+                            .font(.callout)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(minHeight: 200, maxHeight: .infinity)
+                }
+
+                HStack {
+                    Spacer()
+                    Button("关闭") { closeCurrentWindow() }
+                        .adaptiveGlassButton()
+                }
             }
         }
         .padding(24)
@@ -25,7 +34,7 @@ struct AboutView: View {
     }
 
     private let acknowledgement = """
-    版本 3.3
+    版本 3.3.1
     支持 macOS 14 或更高版本
     支持 Apple Silicon 与 Intel Mac
 

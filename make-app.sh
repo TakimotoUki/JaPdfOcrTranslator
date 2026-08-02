@@ -21,6 +21,7 @@ cd "$(dirname "$0")"
 
 APP_NAME="JaPdfOcrTranslator"
 PRODUCT="$APP_NAME"
+APP_VERSION="3.3.1"
 # 用法：./make-app.sh [debug|release] [--universal|--native] [--no-sandbox]
 #   --no-sandbox：把 --disable-sandbox 传给 SwiftPM。默认不开（保持 SwiftPM 沙箱）。
 #   仅用于受管/沙箱化 CI 环境（本机工具沙箱会拒绝 SwiftPM 的 sandbox-exec）。
@@ -149,8 +150,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleName</key>                <string>$APP_NAME</string>
     <key>CFBundleDisplayName</key>         <string>日文 PDF 转译</string>
     <key>CFBundleIdentifier</key>          <string>com.workbuddy.JaPdfOcrTranslator</string>
-    <key>CFBundleVersion</key>             <string>3.3</string>
-    <key>CFBundleShortVersionString</key>  <string>3.3</string>
+    <key>CFBundleVersion</key>             <string>$APP_VERSION</string>
+    <key>CFBundleShortVersionString</key>  <string>$APP_VERSION</string>
     <key>CFBundleExecutable</key>          <string>$PRODUCT</string>
     <key>CFBundlePackageType</key>         <string>APPL</string>
     <key>LSMinimumSystemVersion</key>      <string>14.0</string>

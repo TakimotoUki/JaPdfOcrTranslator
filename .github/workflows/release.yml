@@ -10,7 +10,9 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-15
+    # macOS 26 runner provides the SwiftUI SDK/compiler that emits native
+    # Liquid Glass. Older Xcode versions compile only the compatibility path.
+    runs-on: macos-26
     timeout-minutes: 60
 
     steps:
@@ -30,7 +32,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" \
             build/JaPdfOcrTranslator-macOS-release.zip \
-            --title "日文 PDF 转译 3.3" \
-            --notes "首个公开发布版本。支持 macOS 14 或更高版本，以及 Apple Silicon 与 Intel Mac。安装和使用方法请参阅仓库 README。"
+            --title "日文 PDF 转译 ${VERSION}" \
+            --notes "恢复 macOS 26/27 原生 Liquid Glass：主界面、设置和致谢窗口由系统玻璃容器统一渲染，主要操作使用原生玻璃按钮；修复旧版发布工具链导致玻璃代码未进入成品的问题。界面不添加彩色背景，日志继续与主界面内容处于同一滚动区域。支持 macOS 14 或更高版本，以及 Apple Silicon 与 Intel Mac。安装和使用方法请参阅仓库 README。"

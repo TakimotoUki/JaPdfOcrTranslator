@@ -15,13 +15,15 @@ struct MainView: View {
                 ScrollView {
                     // 所有主界面卡片共用这一条内容流；日志不是固定底栏，
                     // 也不再创建会截获滚轮事件的第二个 ScrollView。
-                    VStack(spacing: 18) {
-                        inputOutputCard
-                        optionsCard
-                        runCard
-                        progressCard
-                        usageCard
-                        logCard
+                    AdaptiveGlassContainer(spacing: 18) {
+                        VStack(spacing: 18) {
+                            inputOutputCard
+                            optionsCard
+                            runCard
+                            progressCard
+                            usageCard
+                            logCard
+                        }
                     }
                     .padding(20)
                 }
@@ -40,11 +42,13 @@ struct MainView: View {
                     Button(action: { openWindow(id: "settings") }) {
                         Label("设置", systemImage: "gearshape")
                     }
+                    .adaptiveGlassButton()
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { openWindow(id: "about") }) {
                         Label("致谢 / 开源许可", systemImage: "info.circle")
                     }
+                    .adaptiveGlassButton()
                 }
             }
             .sheet(item: $state.confirmRequest) { req in
@@ -138,6 +142,7 @@ struct MainView: View {
                     .padding(.vertical, 8)
             }
             .disabled(!state.canAbort)
+            .adaptiveGlassButton()
             Spacer()
         }
         .padding(.horizontal, 4)

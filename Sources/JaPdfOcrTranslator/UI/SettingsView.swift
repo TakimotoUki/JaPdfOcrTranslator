@@ -13,18 +13,20 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 18) {
-                    backendCard
-                    if state.settings.isAPI {
-                        llmCard
-                    } else {
-                        workbuddyCard
+                AdaptiveGlassContainer(spacing: 18) {
+                    VStack(spacing: 18) {
+                        backendCard
+                        if state.settings.isAPI {
+                            llmCard
+                        } else {
+                            workbuddyCard
+                        }
+                        ocrCard
+                        glossaryPolicyCard
+                        pipelineCard
+                        skillCard
+                        promptCard
                     }
-                    ocrCard
-                    glossaryPolicyCard
-                    pipelineCard
-                    skillCard
-                    promptCard
                 }
                 .padding(20)
             }
@@ -32,6 +34,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") { closeCurrentWindow() }
+                        .adaptiveGlassButton(prominent: true)
                 }
             }
             .onAppear(perform: loadFromSettings)

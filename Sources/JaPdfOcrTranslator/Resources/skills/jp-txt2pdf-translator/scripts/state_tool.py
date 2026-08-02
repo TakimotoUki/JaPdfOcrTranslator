@@ -43,7 +43,7 @@ from _common import (  # noqa: E402
     make_parser,
     UsageErrorParser,)
 
-APP_VERSION = "3.3.0"
+APP_VERSION = "3.3.1"
 
 #: 九阶段中文名。**必须与 Swift `PipelineStage.displayName` 逐字一致**
 #: （§3.3 `stage_name` 是同一份文案的两处实现，T04 会做交叉核对）。

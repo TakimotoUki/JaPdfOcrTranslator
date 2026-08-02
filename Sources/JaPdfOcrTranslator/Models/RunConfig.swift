@@ -84,7 +84,7 @@ struct RunConfig: Codable, Sendable, Equatable {
     var schemaVersion: Int = 1
     var createdAt: Double = 0
     var updatedAt: Double = 0
-    var appVersion: String = "3.3.0"
+    var appVersion: String = "3.3.1"
     var skillVersion: String = "3.3.0"
     var backend: String = "workbuddy"             // workbuddy | deepseek
     var inputPath: String = ""
@@ -173,7 +173,7 @@ struct RunConfig: Codable, Sendable, Equatable {
         schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
         createdAt = try c.decodeIfPresent(Double.self, forKey: .createdAt) ?? 0
         updatedAt = try c.decodeIfPresent(Double.self, forKey: .updatedAt) ?? 0
-        appVersion = try c.decodeIfPresent(String.self, forKey: .appVersion) ?? "3.3.0"
+        appVersion = try c.decodeIfPresent(String.self, forKey: .appVersion) ?? "3.3.1"
         skillVersion = try c.decodeIfPresent(String.self, forKey: .skillVersion) ?? "3.3.0"
         backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? "workbuddy"
         inputPath = try c.decodeIfPresent(String.self, forKey: .inputPath) ?? ""

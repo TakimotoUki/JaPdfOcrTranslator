@@ -16,7 +16,7 @@ func presentOpenPanel(forFiles: Bool, allowedExtensions: [String] = []) -> URL? 
     return url
 }
 
-/// A glass-morphism card wrapping a labeled group of controls.
+/// A native Liquid Glass card wrapping a labeled group of controls.
 struct SectionCard<Content: View>: View {
     let title: String
     @ViewBuilder let content: () -> Content
@@ -33,17 +33,40 @@ struct SectionCard<Content: View>: View {
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .adaptiveGlass(cornerRadius: 16)
-        .shadow(color: .black.opacity(0.18), radius: 14, y: 6)
     }
 }
 
-/// Tahoe 使用 Liquid Glass；较早的受支持系统自动降级为原生材质卡片。
+/// Groups the main cards so SwiftUI can render their Liquid Glass shapes as one
+/// coordinated effect. Older SDKs and systems simply keep the same content tree.
+struct AdaptiveGlassContainer<Content: View>: View {
+    let spacing: CGFloat
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) {
+                content()
+            }
+        } else {
+            content()
+        }
+        #else
+        content()
+        #endif
+    }
+}
+
+/// macOS 26 及更高版本使用原生 Liquid Glass；较早系统降级为原生材质卡片。
 extension View {
     @ViewBuilder
     func adaptiveGlass(cornerRadius: CGFloat) -> some View {
         #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
-            self.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
+            self.glassEffect(
+                .regular.interactive(),
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
         } else {
             self.materialCard(cornerRadius: cornerRadius)
         }
@@ -58,6 +81,39 @@ extension View {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
             )
+    }
+
+    /// Uses Apple's native glass button styles when available, with a native
+    /// bordered fallback for macOS 14/15.
+    func adaptiveGlassButton(prominent: Bool = false) -> some View {
+        modifier(AdaptiveGlassButtonModifier(prominent: prominent))
+    }
+}
+
+private struct AdaptiveGlassButtonModifier: ViewModifier {
+    let prominent: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            if prominent {
+                content.buttonStyle(.glassProminent)
+            } else {
+                content.buttonStyle(.glass)
+            }
+        } else if prominent {
+            content.buttonStyle(.borderedProminent)
+        } else {
+            content.buttonStyle(.bordered)
+        }
+        #else
+        if prominent {
+            content.buttonStyle(.borderedProminent)
+        } else {
+            content.buttonStyle(.bordered)
+        }
+        #endif
     }
 }
 
@@ -104,6 +160,7 @@ struct PrimaryButton: View {
                 .padding(.vertical, 8)
         }
         .disabled(disabled)
+        .adaptiveGlassButton(prominent: true)
     }
 }
 
