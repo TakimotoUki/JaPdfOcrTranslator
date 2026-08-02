@@ -7,26 +7,31 @@ struct MainView: View {
     @Environment(\.openWindow) private var openWindow
 
     private let inputExtensions = ["pdf", "txt", "json", "xml", "doc", "docx"]
+    private let logBottomID = "main-log-bottom"
 
     var body: some View {
         NavigationStack {
-            GeometryReader { geometry in
-                VStack(spacing: 18) {
-                    ScrollView {
-                        VStack(spacing: 18) {
-                            inputOutputCard
-                            optionsCard
-                            runCard
-                            progressCard
-                            usageCard
-                        }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    // 所有主界面卡片共用这一条内容流；日志不是固定底栏，
+                    // 也不再创建会截获滚轮事件的第二个 ScrollView。
+                    VStack(spacing: 18) {
+                        inputOutputCard
+                        optionsCard
+                        runCard
+                        progressCard
+                        usageCard
+                        logCard
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    logCard
-                        .frame(height: logHeight(for: geometry.size.height))
+                    .padding(20)
                 }
-                .padding(20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: state.logs.count) { _, _ in
+                    guard !state.logs.isEmpty else { return }
+                    withAnimation {
+                        proxy.scrollTo(logBottomID, anchor: .bottom)
+                    }
+                }
             }
             .navigationTitle("日文 PDF 转译")
             .toolbarBackground(.visible, for: .windowToolbar)
@@ -60,11 +65,6 @@ struct MainView: View {
         .onDisappear {
             NSApp.terminate(nil)
         }
-    }
-
-    /// 日志随主窗口高度连续缩放，不使用独立分栏或拖动分隔线。
-    private func logHeight(for windowHeight: CGFloat) -> CGFloat {
-        min(320, max(150, windowHeight * 0.30))
     }
 
     // MARK: - Cards
@@ -212,33 +212,21 @@ struct MainView: View {
 
     private var logCard: some View {
         SectionCard(title: "日志") {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(state.logs.enumerated()), id: \.offset) { _, line in
-                            Text(line)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onChange(of: state.logs.count) { _, _ in
-                    if let last = state.logs.indices.last {
-                        withAnimation { proxy.scrollTo(last, anchor: .bottom) }
-                    }
-                }
-            }
+            Text(state.logs.isEmpty ? "暂无日志" : state.logs.joined(separator: "\n"))
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
             HStack {
                 Spacer()
                 Text("skill 状态：\(state.skillStatus)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Color.clear
+                .frame(height: 1)
+                .id(logBottomID)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
     }
 }
