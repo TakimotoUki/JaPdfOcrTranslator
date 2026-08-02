@@ -1,0 +1,36 @@
+name: Build macOS release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build Universal 2 app
+        run: bash make-app.sh release --universal
+
+      - name: Verify release package
+        run: |
+          lipo -archs build/JaPdfOcrTranslator.app/Contents/MacOS/JaPdfOcrTranslator
+          codesign --verify --deep --strict build/JaPdfOcrTranslator.app
+          shasum -a 256 build/JaPdfOcrTranslator-macOS-release.zip
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            build/JaPdfOcrTranslator-macOS-release.zip \
+            --title "日文 PDF 转译 3.3" \
+            --notes "首个公开发布版本。支持 macOS 14 或更高版本，以及 Apple Silicon 与 Intel Mac。安装和使用方法请参阅仓库 README。"
