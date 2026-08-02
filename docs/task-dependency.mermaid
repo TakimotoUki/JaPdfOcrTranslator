@@ -1,0 +1,10 @@
+%% JaPdfOcrTranslator v3.3 — 任务依赖图 (§8)
+
+graph LR
+    T01[T01 工程基线与骨架] --> T02[T02 Python skill 脚本层]
+    T01 --> T03[T03 SKILL.md 九阶段与参考文档]
+    T02 --> T04[T04 Swift 数据层与契约层]
+    T01 --> T04
+    T02 -.交叉验收 promptText.-> T04
+    T04 --> T05[T05 Swift 后端编排与 UI]
+    T03 -.阶段清单一致性.-> T05

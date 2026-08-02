@@ -1,0 +1,13 @@
+# OCR 依赖（ndlocr-lite，经本机 Python 子进程运行 ocr_driver.py 所需）
+# 注意：原报错文案只列了前 7 个，但实际还依赖 networkx 与 lxml，缺任一个都会 import ocr 失败。
+numpy
+onnxruntime
+opencv-python
+pypdfium2
+pypdf
+pyyaml
+Pillow
+networkx
+lxml
+# 可选：reportlab（仅用于生成可见文本层 PDF，缺失不影响 OCR 识别）
+# reportlab

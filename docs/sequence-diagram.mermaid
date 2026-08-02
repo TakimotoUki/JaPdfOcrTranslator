@@ -1,0 +1,101 @@
+%% JaPdfOcrTranslator v3.3 — 程序调用流程时序图
+%% 来源: docs/DESIGN-v3.3.md §6.1  WorkBuddy 后端完整链路
+
+sequenceDiagram
+    autonumber
+    actor U as 用户
+    participant AS as AppState
+    participant SS as StateStore(Swift)
+    participant GT as GlossaryToolClient
+    participant WB as WorkBuddyBackend
+    participant AG as WorkBuddy Agent
+    participant PY as skill scripts
+    participant FS as state/
+
+    U->>AS: 选输入/输出 → 开始
+    AS->>AS: OCR/抽取 → ja_combined.txt（沿用）
+    AS->>SS: ensureLayout(outDir/state)
+    AS->>SS: readConfig()
+    alt 存在且 input+params 哈希一致且未完成
+        SS-->>AS: resumable, done=12/48
+        AS->>U: 「检测到未完成任务(12/48)」继续 / 重新开始
+        U-->>AS: 继续
+    else 不一致
+        AS->>SS: archive() → state_archive_<ts>/
+        AS->>SS: writeConfig(新 config.json) + 初始 status.json
+    end
+
+    AS->>AS: policy = GlossaryPolicy.resolve(hasUserGlossary, autoGlossaryEnabled)
+    AS->>GT: init --policy B --user-csv <用户表>
+    GT->>PY: glossary_tool.py init
+    PY->>FS: glossary.json + glossary_conflicts.json + event(glossary_init)
+    GT-->>AS: {terms:12, locked:12}
+
+    AS->>WB: buildPrompt(txt, state目录, 策略段, 九阶段, 续跑指令)
+    Note over WB: 策略段由 glossary_tool.py render --policy 产出<br/>与 DS 后端逐字相同
+    AS->>WB: ensureLaunched() + selectModel()
+    WB->>AG: open workbuddy://task?prompt=…&cwd=<outDir>&skills=jp-txt2pdf-translator
+
+    rect rgba(120,160,255,0.10)
+        Note over AG,FS: Agent 自主执行九阶段（软约束：文档规定 + 脚本硬校验 + 产物存在性）
+        AG->>PY: state_tool.py init（已存在→resumable，仅补 run_resume）
+        AG->>PY: split_text.py --out state → chunks/ + structure.json + manifest.json
+        AG->>PY: state_tool.py set-stage --stage S2
+        loop 每块（或 sampled 抽样 30 块）
+            AG->>FS: digests/chunk_NNN.md
+        end
+        AG->>PY: reduce_digests.py → samples/digest_pack_*.md
+        AG->>FS: book_synopsis.md
+        AG->>PY: sample_text.py → samples/sample_pack.md
+        AG->>FS: style_guide.md
+        AG->>PY: glossary_tool.py upsert --phase post --chunk 0（初始术语表）
+
+        loop S4 每个未完成块 N（state_tool.py pending 给出）
+            AG->>PY: glossary_tool.py upsert --phase pre --chunk N  ①必须最先
+            PY->>FS: event glossary_pre_extract{chunk:N} (seq=k)
+            AG->>PY: glossary_tool.py hits --chunk N --format md    ②命中裁剪
+            AG->>AG: ③翻译（风格→概览→本块梗概→术语子集→前文尾部→原文）
+            AG->>FS: chunks/chunk_NNN_zh.txt
+            AG->>PY: glossary_tool.py upsert --phase post --chunk N ④回抽
+            AG->>PY: state_tool.py mark-chunk --chunk N --value done ⑤落盘
+            PY->>FS: event chunk_translated{chunk:N} (seq=k+3 > k) ✔F33-02
+        end
+
+        AG->>PY: check_boundaries.py → boundary_report.json（S5，Agent 修正跨块截断句）
+        AG->>PY: check_alignment.py → alignment_report.json（S6）
+        AG->>PY: normalize_punct.py → 原地规范化 *_zh.txt（S6）
+        AG->>PY: qa_consistency.py → qa_issues.json（S7，含术语符合率）
+        AG->>PY: merge.py ×2 → translation_full.txt / original_full.txt（S8）
+        AG->>PY: build_pdf.py ×2~3 → zh/ja/bi PDF
+        AG->>PY: glossary_tool.py export → glossary_export.csv
+        AG->>PY: make_report.py → report.md
+        AG->>PY: state_tool.py status --finish
+    end
+
+    par 应用侧轮询（3s 间隔，最长 6h）
+        loop until finished 或 超时 或 中止
+            AS->>SS: readStatus()
+            alt status.json 存在
+                SS-->>AS: 阶段 4/9 · 第 12/48 块 · 术语 137 · 冲突 2
+                AS->>U: 三行进度卡片刷新
+            else 缺失
+                AS->>U: 降级文案「已等待 Ns，仍在处理…」
+            end
+            AS->>SS: readConfig().skillVersion
+            opt skillVersion != 3.3.0
+                AS-->>U: 立即报错「skill 版本不符」（不空等 6h）
+            end
+        end
+    end
+
+    AS->>SS: verifyPreExtractOrder(config)  事后取证
+    SS-->>AS: compliant=false, missing=[7,19]
+    AS->>U: 交付 3 份 PDF + report.md + glossary_export.csv
+    opt compliant == false
+        AS->>U: 顶部横幅「⚠️ 流程未完整执行（第 7、19 块缺译前预抽）」不自动重跑
+    end
+    opt policy ∈ {B,C} 且存在 auto 词条
+        AS->>U: 「发现 125 条自动术语，导入为我的术语表？」
+        U-->>AS: 导入
+        AS->>GT: export --format csv5 --origin auto --out <用户表路径>
+    end

@@ -1,0 +1,78 @@
+```mermaid
+classDiagram
+    class LLMToolClient {
+        +python: String
+        +scriptURL: URL
+        +stateDir: URL
+        +complete(config, system, user, tier, stage, jsonMode, maxTokens) async throws -> LLMCompleteResult
+        +completeJSON(config, system, user, tier, stage) async throws -> LLMJSONResult
+        +validate(config) async throws -> LLMValidateResult
+        +ping(config) async throws -> String
+        +usage() async throws -> LLMUsage
+    }
+    class LLMConfig {
+        +provider: String
+        +baseURL: String
+        +apiKey: String
+        +timeout: Int
+        +maxRetries: Int
+        +reasoningStyle: String
+        +tiers: [String: LLMTierConfig]
+        +toConfigJSON(apiKeyPath: URL) String
+        +redactedDescription: String
+    }
+    class LLMTierConfig {
+        +model: String
+        +thinking: Bool
+        +reasoningEffort: String
+        +requestOverrides: [String: Any]
+    }
+    class LLMCompleteResult {
+        +text: String
+        +usage: LLMUsageSample
+        +totals: LLMUsage
+    }
+    class LLMJSONResult {
+        +value: Any
+        +repaired: Bool
+        +text: String
+        +usage: LLMUsageSample
+    }
+    class LLMUsage {
+        +totals: LLMUsageSlot
+        +byTier: [String: LLMUsageSlot]
+        +byStage: [String: LLMUsageSlot]
+    }
+    class LLMUsageSlot {
+        +calls: Int
+        +promptTokens: Int
+        +completionTokens: Int
+        +totalTokens: Int
+        +cacheHitTokens: Int
+        +cacheMissTokens: Int
+        +cacheHitRate: Double
+    }
+    class DeepSeekTranslator {
+        +settings: Settings
+        +llmClient: LLMToolClient
+        +translate(jpTxt, outDir, glossary, ...) async throws -> TranslateOutcome
+    }
+    class Settings {
+        +llmProvider: String
+        +llmBaseURL: String
+        +llmApiKey: String
+        +llmTimeout: Int
+        +llmMaxRetries: Int
+        +llmModelStrong: String
+        +llmModelCheap: String
+        +llmModelFast: String
+        +buildLLMConfig() LLMConfig
+    }
+    LLMToolClient ..> LLMConfig : uses
+    LLMToolClient ..> LLMCompleteResult : returns
+    LLMToolClient ..> LLMJSONResult : returns
+    LLMToolClient ..> LLMUsage : returns
+    LLMConfig o-- LLMTierConfig
+    DeepSeekTranslator --> LLMToolClient : orchestrates
+    Settings ..> LLMConfig : buildLLMConfig()
+```

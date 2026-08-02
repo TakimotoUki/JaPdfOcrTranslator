@@ -1,0 +1,17 @@
+# ndlocr-lite ONNX 模型权重清单（已随仓库 vendoring 进本项目）
+#
+# 这些权重来自上游仓库 https://github.com/ndl-lab/ndlocr-lite （master 分支 src/model/），
+# 由用户克隆到 ndlocr-lite-master/ 后，复制到
+# ja_pdf_ocr_translator_v2/ocr/ndlocr_lite/model/。
+# 构建脚本 build_macos_app.sh 不再从网络下载；PyInstaller 通过 .spec 的 datas
+# 自动把整个 ocr/ndlocr_lite/ 打包进 .app。
+#
+# 若 model/ 下缺失任一文件，请从 ndlocr-lite-master/src/model/ 重新拷入：
+#   deim-s-1024x1024.onnx
+#   parseq-ndl-24x256-30-tiny-189epoch-tegaki3-r8data-202604.onnx
+#   parseq-ndl-24x384-50-tiny-300epoch-tegaki3-r8data-202604.onnx
+#   parseq-ndl-24x768-100-tiny-153epoch-tegaki3-r8data-202604.onnx
+deim-s-1024x1024.onnx
+parseq-ndl-24x256-30-tiny-189epoch-tegaki3-r8data-202604.onnx
+parseq-ndl-24x384-50-tiny-300epoch-tegaki3-r8data-202604.onnx
+parseq-ndl-24x768-100-tiny-153epoch-tegaki3-r8data-202604.onnx

@@ -1,0 +1,15 @@
+.DS_Store
+.build/
+.swiftpm/
+build/
+DerivedData/
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+*.log
+state/
+state_archive_*/
+

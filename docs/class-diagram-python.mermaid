@@ -1,0 +1,117 @@
+%% JaPdfOcrTranslator v3.3 — Python 侧类图 (§5.2)
+
+classDiagram
+    direction TB
+
+    class Common {
+        <<module _common.py>>
+        +SKILL_VERSION = "3.3.0"
+        +SCHEMA_VERSION = 1
+        +EXIT_OK EXIT_USAGE EXIT_IO EXIT_INPUT EXIT_STATE EXIT_CHECK
+        +file_lock(state_dir, name) contextmanager
+        +read_json(path, default) dict
+        +write_json_atomic(path, data) void
+        +next_seq(state_dir) int
+        +append_event(state_dir, type, stage, chunk, actor, data) void
+        +norm_text(s) str
+        +source_pattern(key) Pattern
+        +source_matches(source, normalized_text) bool
+        +term_match_sources(term) list
+        +chunk_path(state_dir, n, zh) str
+        +sha256_file(path) str
+        +sha256_obj(obj) str
+        +die(code, msg) NoReturn
+    }
+
+    class GlossaryTerm {
+        <<dataclass>>
+        +str source
+        +str target
+        +str reading
+        +str type
+        +str gender
+        +list aliases
+        +str note
+        +str origin
+        +bool locked
+        +str status
+        +int first_chunk
+        +int hits
+        +float created_at
+        +float updated_at
+        +from_dict(d)$ GlossaryTerm
+        +to_dict() dict
+    }
+
+    class Conflict {
+        <<dataclass>>
+        +int id
+        +str source
+        +str existing_target
+        +str proposed_target
+        +int chunk
+        +str phase
+        +bool resolved
+        +str resolution
+        +str resolved_by
+        +float created_at
+        +float resolved_at
+    }
+
+    class GlossaryStore {
+        +str state_dir
+        +str policy
+        +dict~str,GlossaryTerm~ _terms
+        +list~Conflict~ _conflicts
+        +int _next_id
+        +load() void
+        +save() void
+        +get(source) GlossaryTerm
+        +upsert(term, chunk, phase) str
+        +hits(text, scope, max_n) list
+        +render_md(terms, policy_header) str
+        +resolve(source, target, lock, by) dict
+        +open_conflicts() list
+        +stats() dict
+        +export(path, fmt, origin) int
+        +import_(path, origin, lock, overwrite) dict
+        +_log_conflict(...) int
+    }
+
+    class StateStore {
+        +str state_dir
+        +init_run(input, backend, params, force) dict
+        +set_stage(stage, name, finish, skip, reason) void
+        +mark_chunk(n, value, zh_chars, error) void
+        +pending() list
+        +refresh_status(message) dict
+        +verify(check) dict
+        +reset(archive, keep_glossary) str
+        +_read_status() dict
+        +_write_status(d) void
+    }
+
+    class Scripts {
+        <<entrypoints>>
+        glossary_tool.py
+        state_tool.py
+        split_text.py
+        sample_text.py
+        reduce_digests.py
+        check_boundaries.py
+        check_alignment.py
+        normalize_punct.py
+        qa_consistency.py
+        merge.py
+        make_report.py
+        build_pdf.py
+    }
+
+    GlossaryStore "1" o-- "*" GlossaryTerm
+    GlossaryStore "1" o-- "*" Conflict
+    GlossaryStore ..> Common : uses lock/atomic/event/match
+    StateStore ..> Common : uses lock/atomic/event
+    StateStore ..> GlossaryStore : stats() for status refresh
+    Scripts ..> Common
+    Scripts ..> GlossaryStore
+    Scripts ..> StateStore

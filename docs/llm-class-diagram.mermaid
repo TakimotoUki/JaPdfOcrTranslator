@@ -1,0 +1,69 @@
+```mermaid
+classDiagram
+    class LLMClient {
+        <<abstract>>
+        +usage: UsageTracker
+        +complete(messages, tier, json_mode, max_tokens, stage) str
+        +complete_json(messages, tier, max_tokens, stage) Any
+        +usage_summary() dict
+        +validate_credentials() None
+    }
+    class UsageTracker {
+        +_by_tier: dict
+        +_by_stage: dict
+        +record(tier, sample, stage) None
+        +summary() dict
+        +merge_from_file(path) None
+        +persist(path) None
+    }
+    class UsageSample {
+        <<dataclass>>
+        +prompt_tokens: int
+        +completion_tokens: int
+        +total_tokens: int
+        +cache_hit_tokens: int
+        +cache_miss_tokens: int
+    }
+    class OpenAICompatibleClient {
+        +provider_name: str
+        +base_url: str
+        +api_key: str
+        +tiers: dict
+        +requires_api_key: bool
+        +complete() str
+        +_normalize_usage() UsageSample
+        +_build_request_kwargs() dict
+    }
+    class DeepSeekClient {
+        +DEFAULT_BASE_URL = "https://api.deepseek.com"
+        +complete() str
+    }
+    class OllamaClient {
+        +DEFAULT_BASE_URL = "http://localhost:11434/v1"
+    }
+    class FakeClient {
+        +script: list[dict]
+        +calls: list[dict]
+        +complete() str
+    }
+    class resolve_tier {
+        <<function>>
+        +__call__(tiers, tier) TierConfig
+    }
+    class parse_json_result {
+        <<function>>
+        +__call__(text) JsonParseResult
+    }
+    class build_client {
+        <<function>>
+        +__call__(cfg) LLMClient
+    }
+    LLMClient <|-- OpenAICompatibleClient
+    OpenAICompatibleClient <|-- DeepSeekClient
+    OpenAICompatibleClient <|-- OllamaClient
+    LLMClient <|-- FakeClient
+    LLMClient o-- UsageTracker
+    OpenAICompatibleClient ..> resolve_tier : uses
+    OpenAICompatibleClient ..> parse_json_result : uses
+    LLMClient ..> build_client : created by
+```

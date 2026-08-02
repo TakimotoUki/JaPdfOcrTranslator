@@ -1,0 +1,8 @@
+```mermaid
+graph LR
+    T06[T06 Python LLM 层 + state 契约] --> T07[T07 Swift LLM 契约层]
+    T07 --> T08[T08 DeepSeekTranslator 重写 + 设置 UI]
+    T08 --> T09[T09 离线 QA 全流程验收]
+    T07 -.fake provider 冒烟.-> T09
+    T08 --> T10[T10 用量展示与收尾 P1]
+```

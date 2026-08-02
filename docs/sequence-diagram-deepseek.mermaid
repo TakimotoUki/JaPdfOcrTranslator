@@ -1,0 +1,65 @@
+%% JaPdfOcrTranslator v3.3 — §6.2 DeepSeek 后端逐块翻译内循环
+
+sequenceDiagram
+    autonumber
+    participant DT as DeepSeekTranslator
+    participant ST as StateToolClient
+    participant GT as GlossaryToolClient
+    participant API as DeepSeek API
+    participant FS as state/
+
+    Note over DT: 前置：S1 split_text.py / S2 预扫 / S3 风格+初始术语 已完成
+    DT->>ST: pending() → [13,14,…,48]
+    DT->>ST: setStage(.S4_translate)
+
+    loop 每个未完成块 N
+        Note over DT,FS: ① 译前预抽（独立 API 调用，preExtractMode=always）
+        alt preExtractMode == always 或 (firstNChunks 且 N ≤ firstN)
+            DT->>API: 预抽提示词(本块源文 + 现有术语表摘要) → {"terms":[…]}
+            API-->>DT: 候选术语 JSON
+        else off
+            DT->>DT: terms = []（仍须调用，留证据）
+        end
+        DT->>GT: upsert(terms, chunk:N, phase:pre)
+        GT->>FS: glossary.json 更新 + event glossary_pre_extract{N} seq=k
+        GT-->>DT: {inserted:3, rejected_by_lock:1, …}
+
+        Note over DT,FS: ② 命中裁剪
+        DT->>GT: hits(chunk:N, scope:chunk, format:md)
+        GT-->>DT: 【本块命中术语】锁定组 + 自动组（md 文本）
+
+        Note over DT,FS: ③ 翻译（注入顺序静态→动态，利于前缀缓存）
+        DT->>API: system=风格指南+全书概览（书级恒定）<br/>user=本块梗概 → 术语子集 → 前文译文尾部 → 待译原文
+        API-->>DT: 中文译文
+        DT->>FS: chunks/chunk_NNN_zh.txt（原子写）
+
+        Note over DT,FS: ④ 译后回抽校准
+        DT->>API: 回抽提示词(原文 + 译文 + 现表) → {"terms":[…]}
+        API-->>DT: 实际采用译名 / 称呼变体
+        DT->>GT: upsert(terms, chunk:N, phase:post)
+        GT->>FS: event glossary_post_extract{N}
+
+        Note over DT,FS: ⑤ 落盘可续跑
+        DT->>ST: markChunk(N, .done, zhChars)
+        ST->>FS: status.chunk_status[N]=done + event chunk_translated{N} seq=k+3
+        DT->>ST: refreshStatus("已翻译第 N/48 块")
+        DT->>DT: onProgress(阶段 5/9 · 第 N/48 块 · 术语 M 条)
+        opt abortCheck()
+            DT-->>DT: throw AppError.abort（已落盘部分可续跑）
+        end
+    end
+
+    DT->>ST: setStage(.S6_deterministicQC)
+    DT->>DT: check_alignment.py → alignment_report.json
+    opt 存在 error 级不一致
+        DT->>API: 重译该块（最多 2 次）→ 仍失败则标记待复核
+    end
+    DT->>DT: normalize_punct.py（enablePunctNormalize）
+    DT->>ST: setStage(.S7_qa)
+    DT->>DT: qa_consistency.py → qa_issues.json（术语符合率）
+    DT->>ST: setStage(.S8_deliver)
+    DT->>DT: merge.py → PdfBuilder(原生 CoreText) → zh/ja PDF（bilingual 强制 false）
+    DT->>GT: export → glossary_export.csv
+    DT->>DT: make_report.py → report.md
+    DT->>ST: status --finish
+    DT->>ST: verify() → compliant=true（DS 后端顺序天然保证）

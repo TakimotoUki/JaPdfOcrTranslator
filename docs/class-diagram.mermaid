@@ -1,0 +1,263 @@
+%% JaPdfOcrTranslator v3.3 — 数据结构与接口类图
+%% 来源: docs/DESIGN-v3.3.md §5
+
+%% ── 5.1 Swift 侧 ──
+classDiagram
+    direction LR
+
+    class GlossaryEntry {
+        +UUID id
+        +String source
+        +String target
+        +String reading
+        +TermType type
+        +String gender
+        +String[] aliases
+        +String note
+        +TermOrigin origin
+        +Bool locked
+        +TermStatus status
+        +Int? firstChunk
+        +Int hits
+        +Double createdAt
+        +Double updatedAt
+        +isSourceOnlyType() Bool
+    }
+    class TermType {
+        <<enumeration>>
+        person地名组织术语招式物品称谓敬称口癖固定表达其他
+    }
+    class TermOrigin {
+        <<enumeration>>
+        user
+        auto
+    }
+    class TermStatus {
+        <<enumeration>>
+        ok
+        conflict
+    }
+
+    class Glossary {
+        +GlossaryEntry[] entries
+        +Int schemaVersion
+        +GlossaryPolicy policy
+        +isEmpty Bool
+        +lockedCount Int
+        +autoCount Int
+        +loadCSV(URL)$ Glossary
+        +loadJSON(URL)$ Glossary
+        +saveCSV2(URL) void
+        +saveCSV5(URL) void
+        +note_禁止写state_glossary_json
+    }
+
+    class GlossaryPolicy {
+        <<enumeration>>
+        A_userOnly
+        B_userPlusAuto
+        C_autoOnly
+        D_none
+        +resolve(hasUserGlossary, autoEnabled)$ GlossaryPolicy
+        +allowsAutoInsert Bool
+        +maintainsGlossary Bool
+        +runsTerminologyQA Bool
+        +displayName String
+        +promptText String
+        +uiFooterText String
+    }
+
+    class GlossaryConflict {
+        +Int id
+        +String source
+        +String existingTarget
+        +String proposedTarget
+        +Int? chunk
+        +String phase
+        +Bool resolved
+        +ConflictResolution resolution
+        +Double createdAt
+    }
+
+    class TranslationState {
+        +Int schemaVersion
+        +Double updatedAt
+        +String stage
+        +Int stageIndex
+        +Int stageTotal
+        +String stageName
+        +Int chunksTotal
+        +Int chunksDone
+        +Int chunksFailed
+        +Int chunksSkipped
+        +Int? currentChunk
+        +Int glossaryTerms
+        +Int glossaryConflictsOpen
+        +Int qaIssues
+        +Bool finished
+        +Bool failed
+        +Bool? compliant
+        +String message
+        +progressLine() String
+        +isStale(now) Bool
+    }
+
+    class RunConfig {
+        +Int schemaVersion
+        +String appVersion
+        +String skillVersion
+        +String backend
+        +String inputSHA256
+        +String paramsSHA256
+        +RunParams params
+        +Int totalChunks
+        +String pathMode
+        +String prescanMode
+        +isResumable(input, params) Bool
+    }
+
+    class RunParams {
+        +String glossaryPolicy
+        +Bool autoGlossaryEnabled
+        +String glossaryScope
+        +String preExtractMode
+        +Int preExtractFirstN
+        +Bool enablePrescan
+        +Bool enableStyleAnalysis
+        +Bool enablePunctNormalize
+        +Bool enableQA
+        +Bool enableResume
+        +Int maxCharsPerChunk
+        +Bool bilingual
+        +String userGlossarySHA256
+        +sha256() String
+    }
+
+    class Settings {
+        +Bool autoGlossaryEnabled
+        +String glossaryScope
+        +String preExtractMode
+        +Int preExtractFirstN
+        +Bool enablePrescan
+        +Bool enableStyleAnalysis
+        +Bool enablePunctNormalize
+        +Bool enableQA
+        +Bool enablePolish
+        +Bool enableResume
+        +Int maxCharsPerChunk
+        +applyPreset(Preset) void
+        +toRunParams(hasUserGlossary, gSHA) RunParams
+    }
+
+    class StateStore {
+        <<Sendable struct>>
+        +URL root
+        +ensureLayout() void
+        +readConfig() RunConfig?
+        +writeConfig(RunConfig) void
+        +readStatus() TranslationState?
+        +writeStatus(TranslationState) void
+        +appendEvent(Event) void
+        +readEvents() Event[]
+        +readStructure() Structure?
+        +readQAIssues() QAReport?
+        +readAlignment() AlignmentReport?
+        +readGlossary() Glossary
+        +readConflicts() GlossaryConflict[]
+        +verifyPreExtractOrder(RunConfig) ComplianceResult
+        +archive() URL
+    }
+
+    class GlossaryToolClient {
+        <<Sendable struct>>
+        +String python
+        +URL scriptsDir
+        +URL stateDir
+        +init_(policy, userCSV) InitResult
+        +upsert(terms, chunk, phase) UpsertResult
+        +hits(chunk, scope, format) HitsResult
+        +render(chunk, scope, policy) String
+        +conflicts(openOnly) [GlossaryConflict]
+        +resolve(source, target, lock, by) ResolveResult
+        +export(out, format, origin) ExportResult
+        +import_(file, origin, lock) ImportResult
+        +stats() GlossaryStats
+    }
+
+    class StateToolClient {
+        <<Sendable struct>>
+        +initRun(input, backend, params) InitRunResult
+        +setStage(PipelineStage, finish, skip) void
+        +markChunk(n, value, zhChars) void
+        +pending() [Int]
+        +refreshStatus(message) TranslationState
+        +verify() ComplianceResult
+    }
+
+    class PipelineStage {
+        <<enumeration>>
+        S0_init
+        S1_split
+        S2_prescan
+        S3_sample
+        S4_translate
+        S5_boundary
+        S6_deterministicQC
+        S7_qa
+        S8_deliver
+        +index Int
+        +displayName String
+        +requiredArtifacts [String]
+        +isSkippable Bool
+    }
+
+    class Translator {
+        <<protocol>>
+        +translate(...) TranslateOutcome
+    }
+    class WorkBuddyTranslator
+    class DeepSeekTranslator
+    class WorkBuddyBackend {
+        +buildPrompt(...) String
+        +startTranslationTask(...) void
+        +waitForCompletion(...) TranslationState
+        +verifyCompliance(...) ComplianceResult
+    }
+    class AppState {
+        <<MainActor>>
+        +Settings settings
+        +TranslationState? pipeline
+        +ResumeDecision? resumePrompt
+        +Int autoTermsToAdopt
+        +startTranslation() void
+        +adoptAutoTerms() void
+        +resolveConflict(source, target) void
+    }
+
+    Glossary "1" o-- "*" GlossaryEntry
+    GlossaryEntry --> TermType
+    GlossaryEntry --> TermOrigin
+    GlossaryEntry --> TermStatus
+    Glossary --> GlossaryPolicy
+    RunConfig *-- RunParams
+    Settings ..> RunParams : toRunParams()
+    Settings ..> GlossaryPolicy : derives
+    StateStore ..> TranslationState : reads/writes
+    StateStore ..> RunConfig : reads/writes
+    StateStore ..> Glossary : reads only
+    StateStore ..> GlossaryConflict : reads only
+    GlossaryToolClient ..> Glossary : writes via subprocess
+    GlossaryToolClient ..> GlossaryConflict : writes via subprocess
+    StateToolClient ..> StateStore : same schema
+    Translator <|.. WorkBuddyTranslator
+    Translator <|.. DeepSeekTranslator
+    WorkBuddyTranslator --> WorkBuddyBackend
+    WorkBuddyTranslator --> StateStore
+    WorkBuddyTranslator --> GlossaryToolClient
+    DeepSeekTranslator --> StateStore
+    DeepSeekTranslator --> GlossaryToolClient
+    DeepSeekTranslator --> PipelineStage
+    WorkBuddyBackend --> PipelineStage
+    AppState --> Translator
+    AppState --> StateStore
+    AppState --> GlossaryToolClient

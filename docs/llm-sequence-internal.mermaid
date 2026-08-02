@@ -1,0 +1,27 @@
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as Swift (ProcessRunner)
+    participant L as llm_tool.py
+    participant U as usage.json
+    participant P as Provider API
+
+    S->>L: complete --config-file llm_config.json --stage S4_translate ...
+    L->>L: load config → build_client(provider)
+    L->>L: resolve_tier(tiers, tier)  # 只降不升回退链
+    L->>L: _build_request_kwargs(model, messages, json_mode)  # JSON 模式双保险指令
+    loop attempt ≤ max_retries+1
+        L->>P: POST {model, messages, stream:false, response_format?, extra_body?}
+        alt HTTP 200
+            P-->>L: {choices[0].message.content, usage}
+            L->>L: _normalize_usage → UsageTracker.record(tier, sample, stage)
+            L->>U: usage.lock → 读-合并-原子写回
+            L-->>S: {"ok":true, text, usage, totals}
+        else 429 / 5xx / 网络异常
+            L->>L: 指数退避 sleep(base * 2^attempt + jitter)
+        else 4xx(非429)
+            L-->>S: 退 6 (llm_failed 事件)
+        end
+    end
+    L-->>S: 退 6 (llm_failed 事件)
+```

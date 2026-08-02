@@ -1,0 +1,9 @@
+{"when":{"stage":"ping"},"respond":{"text":"pong"}}
+{"when":{"stage":"S4_pre_extract"},"respond":{"terms":[{"source":"御堂 静","target":"御堂静","type":"人物"}]}}
+{"when":{"stage":"S4_post_extract"},"respond":{"terms":[{"source":"御堂 静","target":"御堂静","type":"人物"}]}}
+{"when":{"stage":"S4_translate"},"respond":{"text":"离线QA译文占位。御堂静站在樱坂上。"}}
+{"when":{"stage":"S2_digest"},"respond":{"text":"本块梗概占位。"}}
+{"when":{"stage":"S2_synopsis"},"respond":{"text":"全书梗概占位。"}}
+{"when":{"stage":"S3_style"},"respond":{"text":"风格指南占位。体裁为轻小说，语气克制。"}}
+{"when":{"stage":"S6_retranslate"},"respond":{"text":"重译占位。御堂静站在樱坂上。"}}
+{"when":{"stage":"S7_qa_fix"},"respond":{"text":"QA修正占位。御堂静站在樱坂上。"}}

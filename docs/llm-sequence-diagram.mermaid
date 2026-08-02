@@ -1,0 +1,47 @@
+```mermaid
+sequenceDiagram
+    autonumber
+    participant DT as DeepSeekTranslator (Swift)
+    participant LC as LLMToolClient (Swift)
+    participant LT as llm_tool.py (Python)
+    participant ST as state_tool.py
+    participant GT as glossary_tool.py
+    participant FS as state/
+
+    Note over DT: 前置：S1 split / S2 预扫 / S3 风格+初始术语 已完成<br/>启动时已写 llm_config.json（0600）并 validate() 通过
+    DT->>ST: pending() → [13,14,…,48]
+    DT->>ST: setStage(.S4_translate)
+
+    loop 每个未完成块 N
+        Note over DT,FS: ① 译前预抽（preExtractMode=always 时）
+        DT->>LT: complete-json(tier=fast, stage=S4_pre_extract,<br/>预抽提示词=本块源文+现有术语摘要)
+        LT->>LT: resolve_tier(fast) → 回退链校验
+        LT->>LT: retry_with_backoff → POST /chat/completions
+        LT-->>DT: {value:{terms:[...]}, repaired, usage}
+        DT->>GT: upsert(terms, chunk:N, phase:pre)
+        GT-->>DT: {inserted:3, ...}
+
+        Note over DT,FS: ② 命中裁剪（术语硬契约，不变）
+        DT->>GT: hits(chunk:N, scope:chunk, format:md)
+        GT-->>DT: 【本块命中术语】md
+
+        Note over DT,FS: ③ 翻译（核心 LLM 调用）
+        DT->>LT: complete(tier=strong, stage=S4_translate,<br/>system=风格指南+全书概览,<br/>user=本块梗概→术语子集→前文译文尾部→待译原文)
+        LT-->>DT: {text:译文, usage, totals}
+        DT->>FS: chunks/chunk_NNN_zh.txt（原子写）
+
+        Note over DT,FS: ④ 译后回抽校准
+        DT->>LT: complete-json(tier=fast, stage=S4_post_extract,<br/>回抽提示词=原文+译文+现表)
+        LT-->>DT: {value:{terms:[...]}, repaired, usage}
+        DT->>GT: upsert(terms, chunk:N, phase:post)
+
+        Note over DT,FS: ⑤ 落盘可续跑
+        DT->>ST: markChunk(N, .done, zhChars)
+        DT->>ST: refreshStatus("已翻译第 N/48 块")
+        opt abortCheck()
+            DT-->>DT: throw AppError.abort（已落盘部分可续跑）
+        end
+    end
+
+    Note over DT,FS: S6–S8 沿用 v3.3 编排（对齐检查/标点/QA/合并/PDF/报告）<br/>结束时 LC.usage() 读 usage.json → 交付面板显示
+```
