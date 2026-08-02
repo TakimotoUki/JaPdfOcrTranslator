@@ -41,15 +41,23 @@ struct SectionCard<Content: View>: View {
 extension View {
     @ViewBuilder
     func adaptiveGlass(cornerRadius: CGFloat) -> some View {
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
             self.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius))
         } else {
-            self.background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
-                )
+            self.materialCard(cornerRadius: cornerRadius)
         }
+        #else
+        self.materialCard(cornerRadius: cornerRadius)
+        #endif
+    }
+
+    private func materialCard(cornerRadius: CGFloat) -> some View {
+        self.background(.regularMaterial, in: RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            )
     }
 }
 
